@@ -79,9 +79,11 @@ jobs:
           cd $TOOLCHAIN_DIR
           wget -q https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
           tar -zxvf Clang-16.0.6-20260510.tar.gz
-          echo "PATH=$TOOLCHAIN_DIR/bin:$PATH" >> $GITHUB_ENV
+          # 关键修复：解压包内部是文件夹，软链接为脚本识别的 clang 目录
+          mv Clang-16.0.6-20260510 clang
+          echo "PATH=$TOOLCHAIN_DIR/clang/bin:$PATH" >> $GITHUB_ENV
 
-      # 集成最新ReSukiSU + 写入SELinux隐藏配置（无EOF heredoc，零语法报错）
+      # 集成最新ReSukiSU + 写入SELinux隐藏配置（无EOF语法报错）
       - name: Inject Latest ReSukiSU & SELinux Hide Config
         if: inputs.ksu == true
         run: |
