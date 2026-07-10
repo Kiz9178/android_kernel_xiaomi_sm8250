@@ -21,7 +21,6 @@ on:
           - elish
           - enuma
           - dagu
-          - pipa
 
       script:
         description: 'Select Build Script'
@@ -33,100 +32,69 @@ on:
           - build-miui.sh
 
       ksu:
-        description: 'Enable KernelSU (ReSukiSU-SuSFS 最新版+SELinux隐藏)'
+        description: 'Enable ReSukiSU Latest + SELinux Hide'
         required: true
         type: boolean
         default: true
 
 jobs:
   build:
-    name: Build Kernel-1 for ${{ inputs.device }} (${{ inputs.script }}) (${{ inputs.ksu && 'ReSukiSU-Latest' || 'NoKSU' }})
+    name: Build Kernel-1 for ${{ inputs.device }} (${{ inputs.script }}) (${{ inputs.ksu && 'ReSukiSU' || 'NoKSU' }})
     runs-on: ubuntu-latest
     env:
       TOOLCHAIN_DIR: $HOME/zyc-clang
-      DEFCONFIG_PATH: arch/arm64/configs/${{ inputs.device }}_defconfig
 
     steps:
-    - name: Checkout Source
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 1
+      - name: Checkout Source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
 
-    - name: Cleanup Disk Space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - name: Cleanup Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential git curl wget bison flex zip bc cpio libssl-dev ccache python-is-python3
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git curl wget bison flex zip bc cpio libssl-dev ccache python-is-python3
 
-    - name: Setup Cache (ccache)
-      uses: actions/cache@v5
-      with:
-        path: ~/.cache/ccache_mikernel
-        key: kernel-ccache-${{ inputs.device }}-${{ inputs.script }}-${{ github.run_id }}
-        restore-keys: |
-          kernel-ccache-${{ inputs.device }}-${{ inputs.script }}-
-          kernel-ccache-${{ inputs.device }}-
-          kernel-ccache-
+      - name: Setup Cache (ccache)
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ccache_mikernel
+          key: kernel-ccache-${{ inputs.device }}-${{ inputs.script }}-${{ github.run_id }}
+          restore-keys: |
+            kernel-ccache-${{ inputs.device }}-${{ inputs.script }}-
+            kernel-ccache-${{ inputs.device }}-
+            kernel-ccache-
 
-    # 完全还原原版工具链下载解压，不做mv改名操作
-    - name: Setup Toolchain (ZyC-Clang 16)
-      run: |
-        mkdir -p $TOOLCHAIN_DIR
-        cd $TOOLCHAIN_DIR
-        wget -q https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
-        tar -zxvf Clang-16.0.6-20260510.tar.gz
-        echo "PATH=$TOOLCHAIN_DIR/Clang-16.0.6-20260510/bin:$PATH" >> $GITHUB_ENV
+      - name: Setup Toolchain (ZyC-Clang 16)
+        run: |
+          mkdir -p $TOOLCHAIN_DIR
+          cd $TOOLCHAIN_DIR
+          wget -q https://github.com/ZyCromerZ/Clang/releases/download/16.0.6-20260510-release/Clang-16.0.6-20260510.tar.gz
+          tar -zxvf Clang-16.0.6-20260510.tar.gz
+          echo "PATH=$TOOLCHAIN_DIR/Clang-16.0.6-20260510/bin:$PATH" >> $GITHUB_ENV
 
-    # 无EOF，逐行echo写入配置，彻底规避yaml语法报错
-    - name: Integrate Latest ReSukiSU & Inject SELinux Hide Config
-      if: inputs.ksu == true
-      run: |
-        echo "=== Pull Latest ReSukiSU Source ==="
-        curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
+      - name: Build Kernel
+        run: |
+          chmod +x build.sh build-miui.sh
+          echo "Build Script: ${{ inputs.script }}"
+          echo "Device: ${{ inputs.device }}"
+          if [ "${{ inputs.ksu }}" = "true" ]; then
+            echo "Build with ReSukiSU Latest + SELinux Hide"
+            bash ${{ inputs.script }} ${{ inputs.device }} ksu
+          else
+            echo "Build without KSU"
+            bash ${{ inputs.script }} ${{ inputs.device }}
+          fi
 
-        echo "=== Inject SELinux Hide Switch Config ==="
-        echo "# ReSukiSU Core + SELinux Full Hide (Manager Switch)" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KSU=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KSU_MANAGER=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KSU_SUSFS=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KSU_HIDE_SELINUX=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KSU_SPOOF_GETENFORCE=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_HIDE_SELINUX_CMDLINE=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_SUSFS_HIDE_SELINUX_FS=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_SECURITY_SELINUX_DEVELOP=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_SELINUX_PERMISSIVE_DEFAULT=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KPROBES=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_HAVE_KPROBES=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KPROBE_EVENTS=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KALLSYMS=y" >> ${{ env.DEFCONFIG_PATH }}
-        echo "CONFIG_KALLSYMS_ALL=y" >> ${{ env.DEFCONFIG_PATH }}
-
-        echo "=== Check injected KSU config ==="
-        grep -E "CONFIG_KSU|CONFIG_SELINUX" ${{ env.DEFCONFIG_PATH }}
-
-    - name: Build Kernel
-      run: |
-        chmod +x build.sh build-miui.sh
-        
-        echo "Using build script: ${{ inputs.script }}"
-        echo "Target device: ${{ inputs.device }}"
-
-        if [ "${{ inputs.ksu }}" == "true" ]; then
-          echo "===== Build with LATEST ReSukiSU + SUSFS SELinux Hide ====="
-          bash ${{ inputs.script }} ${{ inputs.device }} ksu
-        else
-          echo "===== Build without KernelSU ====="
-          bash ${{ inputs.script }} ${{ inputs.device }}
-        fi
-
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v6
-      with:
-        name: Kernel1-${{ inputs.device }}-${{ inputs.script }}-${{ inputs.ksu && 'ReSukiSU-Latest' || 'NoKSU' }}-${{ github.run_number }}
-        path: ./*.zip
-        if-no-files-found: error
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: Kernel1-${{ inputs.device }}-${{ inputs.script }}-${{ inputs.ksu && 'ReSukiSU' || 'NoKSU' }}-${{ github.run_number }}
+          path: ./*.zip
+          if-no-files-found: error
