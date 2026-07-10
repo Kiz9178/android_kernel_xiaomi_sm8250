@@ -5,7 +5,8 @@
 # Ensure the script exits on error
 set -e
 
-TOOLCHAIN_PATH=$HOME/zyc-clang/bin
+# 修复工具链路径，匹配解压真实目录，不再报不存在
+TOOLCHAIN_PATH=$HOME/zyc-clang/Clang-16.0.6-20260510/bin
 GIT_COMMIT_ID=$(git rev-parse --short=8 HEAD)
 TARGET_DEVICE=$1
 
@@ -136,6 +137,7 @@ make $MAKE_ARGS ${TARGET_DEVICE}_defconfig
 if [ $KSU_ENABLE -eq 1 ]; then
     scripts/config --file out/.config \
     -e KSU \
+    -e KSU_HIDE_SELINUX \
     -e THREAD_INFO_IN_TASK \
     -e KSU_SUSFS \
     -e KSU_SUSFS_SUS_PATH \
@@ -279,6 +281,7 @@ make $MAKE_ARGS ${TARGET_DEVICE}_defconfig
 if [ $KSU_ENABLE -eq 1 ]; then
     scripts/config --file out/.config \
     -e KSU \
+    -e KSU_HIDE_SELINUX \
     -e THREAD_INFO_IN_TASK \
     -e KSU_SUSFS \
     -e KSU_SUSFS_SUS_PATH \
