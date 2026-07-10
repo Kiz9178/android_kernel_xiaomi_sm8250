@@ -112,10 +112,8 @@ jobs:
     - name: Build Kernel
       run: |
         chmod +x build.sh build-miui.sh
-        
         echo "Build Script: ${{ inputs.script }}"
         echo "Target Device: ${{ inputs.device }}"
-
         if [ "${{ inputs.ksu }}" == "true" ]; then
           echo "Build Mode: ReSukiSU Latest + SELinux Hide"
           bash ${{ inputs.script }} ${{ inputs.device }} ksu
