@@ -1,36 +1,28 @@
 #!/bin/bash
-
-# Some logics of this script are copied from [scripts/build_kernel]. Thanks to UtsavBalar1231.
-
-# Ensure the script exits on error
-set -e
-
-# 修复工具链路径，匹配解压真实目录，不再报不存在
-TOOLCHAIN_PATH=$HOME/zyc-clang/Clang-16.0.6-20260510/bin
-GIT_COMMIT_ID=$(git rev-parse --short=8 HEAD)
-TARGET_DEVICE=$1
-
-if [ -z "$1" ]; then
-    echo "Error: No argument provided, please specific a target device." 
-    echo "If you need KernelSU, please add [ksu] as the second arg."
-    echo "Examples:"
-    echo "Build for lmi(K30 Pro/POCO F2 Pro) without KernelSU:"
-    echo "    bash build.sh lmi"
-    echo "Build for umi(Mi10) with KernelSU:"
-    echo "    bash build.sh umi ksu"
-    exit 1
-fi
-
-
-
-if [ ! -d $TOOLCHAIN_PATH ]; then
-    echo "TOOLCHAIN_PATH [$TOOLCHAIN_PATH] does not exist."
-    echo "Please ensure the toolchain is there, or change TOOLCHAIN_PATH in the script to your toolchain path."
-    exit 1
-fi
-
-echo "TOOLCHAIN_PATH: [$TOOLCHAIN_PATH]"
-export PATH="$TOOLCHAIN_PATH:$PATH"
+ # Some logics of this script are copied from [scripts/build_kernel]. Thanks to UtsavBalar1231.
+ # Ensure the script exits on error
+ set -e
+ # 修正解压真实目录
+ TOOLCHAIN_PATH=$HOME/zyc-clang/Clang-16.0.6-20260510-release/bin
+ GIT_COMMIT_ID=$(git rev-parse --short=8 HEAD)
+ TARGET_DEVICE=$1
+ if [ -z "$1" ]; then
+     echo "Error: No argument provided, please specific a target device." 
+     echo "If you need KernelSU, please add [ksu] as the second arg."
+     echo "Examples:"
+     echo "Build for lmi(K30 Pro/POCO F2 Pro) without KernelSU:"
+     echo "    bash build.sh lmi"
+     echo "Build for umi(Mi10) with KernelSU:"
+     echo "    bash build.sh umi ksu"
+     exit 1
+ fi
+ if [ ! -d $TOOLCHAIN_PATH ]; then
+     echo "TOOLCHAIN_PATH [$TOOLCHAIN_PATH] does not exist."
+     echo "Please ensure the toolchain is there, or change TOOLCHAIN in script."
+     exit 1
+ fi
+ echo "TOOLCHAIN_PATH: [$TOOLCHAIN_PATH]"
+ export PATH="$TOOLCHAIN_PATH:$PATH"
 
 if ! command -v aarch64-linux-gnu-ld >/dev/null 2>&1; then
     echo "[aarch64-linux-gnu-ld] does not exist, please check your environment."
